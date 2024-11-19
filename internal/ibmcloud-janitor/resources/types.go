@@ -39,16 +39,24 @@ type CleanupOptions struct {
 	IgnoreAPIKey bool
 }
 
+// Resources for PowerVS
 var PowervsResources = []Resource{
 	PowerVSInstance{},
 	PowerVSNetwork{},
 }
 
+// Resources for VPC
 var VpcResources = []Resource{
 	VPCInstance{},
 	VPCLoadBalancer{},
 	VPCNetwork{},
 	VPCs{},
+}
+
+// Resources for Z VSI
+var ZVSIResources = []Resource{
+	ZVSIInstance{},
+	ZVSINetwork{},
 }
 
 var CommonResources = []Resource{
@@ -62,6 +70,13 @@ type PowerVS interface {
 	DeleteInstance(id string) error
 	GetPorts(id string) (*models.NetworkPorts, error)
 	DeletePort(networkID, portID string) error
+}
+
+type ZVSI interface {
+	GetInstances() (*models.ZVSIInstances, error)
+	DeleteInstance(id string) error
+	GetNetworks() (*models.Networks, error)
+	DeleteNetwork(id string) error
 }
 
 type VPC interface {
@@ -89,11 +104,14 @@ type ServiceIDClient interface {
 	ListServiceID(options *identityv1.ListServiceIdsOptions) (*identityv1.ServiceIDList, *core.DetailedResponse, error)
 }
 
+// Lists resources based on their type
 func listResources(rtype string) ([]Resource, error) {
 	if strings.HasPrefix(rtype, "powervs") {
 		return PowervsResources, nil
 	} else if strings.HasPrefix(rtype, "vpc") {
 		return VpcResources, nil
+	} else if strings.HasPrefix(rtype, "zvsi") {
+		return ZVSIResources, nil
 	}
-	return nil, errors.New("Not a valid resource type. The supported types are powervs-service and vpc-service")
+	return nil, errors.New("Not a valid resource type. The supported types are powervs-service, vpc-service, and zvsi-service")
 }

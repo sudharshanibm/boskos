@@ -30,7 +30,12 @@ const (
 	Region            = "region"
 	Zone              = "zone"
 	ResourceGroup     = "resource-group"
+	// Z VSI constants
+	ZVSIServiceInstanceID = "zvsi-service-instance-id"
+	ZVSIRegion            = "zvsi-region"
+	ZVSIZone              = "zvsi-zone"
 )
+
 
 type PowerVSResourceData struct {
 	ServiceInstanceID string
@@ -41,6 +46,42 @@ type VPCResourceData struct {
 	Region        string
 	ResourceGroup string
 }
+
+// ZVSIResourceData holds the data for Z VSI resources
+type ZVSIResourceData struct {
+	ServiceInstanceID string
+	Region            string
+	Zone              string
+}
+
+// Fetches the resource user data for type zvsi-service
+func GetZVSIResourceData(r *common.Resource) (*ZVSIResourceData, error) {
+	if !strings.HasPrefix(r.Type, "zvsi") {
+		return nil, fmt.Errorf("invalid resource type %q", r.Type)
+	}
+
+	sid, ok := r.UserData.Map.Load(ZVSIServiceInstanceID)
+	if !ok {
+		return nil, errors.New("no ZVSI Service Instance ID in UserData")
+	}
+
+	region, ok := r.UserData.Map.Load(ZVSIRegion)
+	if !ok {
+		return nil, errors.New("no region in UserData")
+	}
+
+	zone, ok := r.UserData.Map.Load(ZVSIZone)
+	if !ok {
+		return nil, errors.New("no zone in UserData")
+	}
+
+	return &ZVSIResourceData{
+		ServiceInstanceID: sid.(string),
+		Region:            region.(string),
+		Zone:              zone.(string),
+	}, nil
+}
+
 
 // Fetches the resource user data for type powervs-service
 func GetPowerVSResourceData(r *common.Resource) (*PowerVSResourceData, error) {
