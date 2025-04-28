@@ -37,6 +37,7 @@ type CleanupOptions struct {
 	Resource     *common.Resource
 	Debug        bool
 	IgnoreAPIKey bool
+	VPCID        *string
 	AccountID    *string
 }
 

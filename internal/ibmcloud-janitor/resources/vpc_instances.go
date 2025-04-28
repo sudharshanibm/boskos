@@ -18,7 +18,6 @@ package resources
 
 import (
 	"github.com/IBM/vpc-go-sdk/vpcv1"
-
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -34,21 +33,28 @@ func (VPCInstance) cleanup(options *CleanupOptions) error {
 		return errors.Wrap(err, "couldn't create VPC client")
 	}
 
-	instanceList, _, err := client.ListInstances(&vpcv1.ListInstancesOptions{
-		ResourceGroupID: &client.ResourceGroupID,
-	})
+	instanceListOpts := &vpcv1.ListInstancesOptions{}
+	if client.VPCID != "" {
+		instanceListOpts.VPCID = &client.VPCID
+	} else {
+		instanceListOpts.ResourceGroupID = &client.ResourceGroupID
+	}
+
+	instanceList, _, err := client.ListInstances(instanceListOpts)
 	if err != nil {
 		return errors.Wrap(err, "failed to list the instances")
 	}
 
-	for _, ins := range instanceList.Instances {
-		_, err := client.DeleteInstance(&vpcv1.DeleteInstanceOptions{
-			ID: ins.ID,
+	for _, instance := range instanceList.Instances {
+		_, err = client.DeleteInstance(&vpcv1.DeleteInstanceOptions{
+			ID: instance.ID,
 		})
 		if err != nil {
-			return errors.Wrapf(err, "failed to delete the instance %q", *ins.Name)
+			return errors.Wrapf(err, "failed to delete the instance %q", *instance.Name)
 		}
+		resourceLogger.WithFields(logrus.Fields{"name": instance.Name}).Info("Successfully deleted instance")
 	}
-	resourceLogger.Info("Successfully deleted the virtual server instances")
+
+	resourceLogger.Info("Successfully deleted all virtual server instances")
 	return nil
 }

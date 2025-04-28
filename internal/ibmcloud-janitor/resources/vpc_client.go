@@ -32,6 +32,7 @@ type IBMVPCClient struct {
 	vpcService      *vpcv1.VpcV1
 	ResourceGroupID string
 	Resource        *common.Resource
+	VPCID           string
 }
 
 func (c *IBMVPCClient) DeleteInstance(options *vpcv1.DeleteInstanceOptions) (*core.DetailedResponse, error) {
@@ -100,6 +101,9 @@ func NewVPCClient(options *CleanupOptions) (*IBMVPCClient, error) {
 	}
 
 	client.ResourceGroupID = vpcData.ResourceGroup
+	if options.VPCID != nil {
+		client.VPCID = *options.VPCID
+	}
 	client.Resource = options.Resource
 	url := "https://" + vpcData.Region + ".iaas.cloud.ibm.com/v1"
 	auth, err := account.GetAuthenticator()

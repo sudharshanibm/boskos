@@ -18,7 +18,6 @@ package resources
 
 import (
 	"github.com/IBM/vpc-go-sdk/vpcv1"
-
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -34,6 +33,13 @@ func (VPCs) cleanup(options *CleanupOptions) error {
 		return errors.Wrap(err, "couldn't create VPC client")
 	}
 
+	// If VPC ID is provided, do NOT delete the VPC itself.
+	if client.VPCID != "" {
+		resourceLogger.Info("VPC ID provided, skipping VPC deletion")
+		return nil // Skip the VPC deletion
+	}
+
+	// List VPCs for the resource group if no VPC ID is provided
 	vpcList, _, err := client.ListVpcs(&vpcv1.ListVpcsOptions{
 		ResourceGroupID: &client.ResourceGroupID,
 	})
@@ -42,13 +48,20 @@ func (VPCs) cleanup(options *CleanupOptions) error {
 	}
 
 	for _, vpc := range vpcList.Vpcs {
-		_, err = client.DeleteVPC(&vpcv1.DeleteVPCOptions{
-			ID: vpc.ID,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "failed to delete the VPC %q", *vpc.Name)
+		// Only delete if the VPC ID doesn't match the provided one
+		if client.VPCID != *vpc.ID {
+			_, err = client.DeleteVPC(&vpcv1.DeleteVPCOptions{
+				ID: vpc.ID,
+			})
+			if err != nil {
+				return errors.Wrapf(err, "failed to delete the VPC %q", *vpc.Name)
+			}
+			resourceLogger.Infof("Successfully deleted VPC: %s", *vpc.Name)
+		} else {
+			resourceLogger.Infof("Skipping deletion of VPC: %s (VPC ID provided)", *vpc.Name)
 		}
 	}
-	resourceLogger.Info("Successfully deleted the VPCs")
+
+	resourceLogger.Info("VPC cleanup completed successfully")
 	return nil
 }

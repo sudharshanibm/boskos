@@ -30,6 +30,7 @@ const (
 	Region            = "region"
 	Zone              = "zone"
 	ResourceGroup     = "resource-group"
+	VPCID             = "vpc-id" 
 )
 
 type PowerVSResourceData struct {
@@ -40,6 +41,7 @@ type PowerVSResourceData struct {
 type VPCResourceData struct {
 	Region        string
 	ResourceGroup string
+	VPCID         string 
 }
 
 // Fetches the resource user data for type powervs-service
@@ -66,26 +68,34 @@ func GetPowerVSResourceData(r *common.Resource) (*PowerVSResourceData, error) {
 
 // Fetches the resource user data for type vpc-service
 func GetVPCResourceData(r *common.Resource) (*VPCResourceData, error) {
-	if !strings.HasPrefix(r.Type, "vpc") {
-		return nil, fmt.Errorf("invalid resource type %q", r.Type)
-	}
+    if !strings.HasPrefix(r.Type, "vpc") {
+        return nil, fmt.Errorf("invalid resource type %q", r.Type)
+    }
 
-	region, ok := r.UserData.Map.Load(Region)
-	if !ok {
-		return nil, errors.New("no region in UserData")
-	}
-	rg, ok := r.UserData.Map.Load(ResourceGroup)
-	if !ok {
-		return nil, errors.New("no resource group in UserData")
-	}
+    region, ok := r.UserData.Map.Load(Region)
+    if !ok {
+        return nil, errors.New("no region in UserData")
+    }
+    rg, ok := r.UserData.Map.Load(ResourceGroup)
+    if !ok {
+        return nil, errors.New("no resource group in UserData")
+    }
+    vpcID, ok := r.UserData.Map.Load(VPCID)
+    if !ok {
+        return nil, errors.New("no vpc-id in UserData")
+    }
 
-	return &VPCResourceData{
-		Region:        region.(string),
-		ResourceGroup: rg.(string),
-	}, nil
+    return &VPCResourceData{
+        Region:        region.(string),
+        ResourceGroup: rg.(string),
+        VPCID:         vpcID.(string),
+    }, nil
 }
 
 // Updates user data of the resource
-func UpdateResource(r *common.Resource, apikey string) {
-	r.UserData.Store(APIKey, apikey)
+func UpdateResource(r *common.Resource, apikey, vpcID string) {
+    r.UserData.Store(APIKey, apikey)
+    if vpcID != "" { 
+        r.UserData.Store(VPCID, vpcID)
+    }
 }

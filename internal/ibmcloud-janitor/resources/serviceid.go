@@ -131,6 +131,6 @@ func (k APIKey) cleanup(options *CleanupOptions) error {
 	}
 	resourceLogger.WithField("API key:", apikey.Name).Info("Successfully reset the API key of the resource")
 
-	ibmcloud.UpdateResource(options.Resource, *apikey.Apikey)
+	ibmcloud.UpdateResource(options.Resource, *apikey.Apikey, "")
 	return nil
 }

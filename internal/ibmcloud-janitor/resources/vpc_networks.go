@@ -18,7 +18,6 @@ package resources
 
 import (
 	"github.com/IBM/vpc-go-sdk/vpcv1"
-
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -37,9 +36,14 @@ func (VPCNetwork) cleanup(options *CleanupOptions) error {
 		return errors.Wrap(err, "couldn't create VPC client")
 	}
 
-	subnetList, _, err := client.ListSubnets(&vpcv1.ListSubnetsOptions{
-		ResourceGroupID: &client.ResourceGroupID,
-	})
+	listSubnetOpts := &vpcv1.ListSubnetsOptions{}
+	if client.VPCID != "" {
+		listSubnetOpts.VPCID = &client.VPCID
+	} else {
+		listSubnetOpts.ResourceGroupID = &client.ResourceGroupID
+	}
+
+	subnetList, _, err := client.ListSubnets(listSubnetOpts)
 	if err != nil {
 		return errors.Wrap(err, "failed to list the subnets")
 	}
@@ -70,10 +74,12 @@ func (VPCNetwork) cleanup(options *CleanupOptions) error {
 		}
 	}
 
-	// Delete the unbound floating IPs that were previously used by a VSI
-	fips, _, err := client.ListFloatingIps(&vpcv1.ListFloatingIpsOptions{
-		ResourceGroupID: &client.ResourceGroupID,
-	})
+	// Delete unbound floating IPs
+	fipListOpts := &vpcv1.ListFloatingIpsOptions{}
+	if client.VPCID == "" {
+		fipListOpts.ResourceGroupID = &client.ResourceGroupID
+	}
+	fips, _, err := client.ListFloatingIps(fipListOpts)
 	if err != nil {
 		return errors.Wrap(err, "failed to list the floating IPs")
 	}
