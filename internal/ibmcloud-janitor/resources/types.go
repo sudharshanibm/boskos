@@ -47,7 +47,7 @@ var PowervsResources = []Resource{
 
 var VpcResources = []Resource{
 	VPCInstance{},
-	VPCLoadBalancer{},
+	// VPCLoadBalancer{}, // Commented out to preserve load balancers in test account
 	VPCNetwork{},
 	VPCs{},
 }
