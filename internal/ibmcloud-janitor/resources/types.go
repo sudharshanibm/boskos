@@ -47,7 +47,9 @@ var PowervsResources = []Resource{
 
 var VpcResources = []Resource{
 	VPCInstance{},
+	VPCInstanceTemplate{},
 	VPCLoadBalancer{},
+	VPCSecurityGroup{},
 	VPCNetwork{},
 	VPCs{},
 }
@@ -68,7 +70,11 @@ type PowerVS interface {
 type VPC interface {
 	DeleteInstance(options *vpcv1.DeleteInstanceOptions) (*core.DetailedResponse, error)
 	ListInstances(options *vpcv1.ListInstancesOptions) (*vpcv1.InstanceCollection, *core.DetailedResponse, error)
+	ListInstanceNetworkInterfaces(options *vpcv1.ListInstanceNetworkInterfacesOptions) (*vpcv1.NetworkInterfaceUnpaginatedCollection, *core.DetailedResponse, error)
+	DeleteInstanceTemplate(options *vpcv1.DeleteInstanceTemplateOptions) (*core.DetailedResponse, error)
+	ListInstanceTemplates(options *vpcv1.ListInstanceTemplatesOptions) (*vpcv1.InstanceTemplateCollection, *core.DetailedResponse, error)
 	DeleteVPC(options *vpcv1.DeleteVPCOptions) (*core.DetailedResponse, error)
+	GetVPC(options *vpcv1.GetVPCOptions) (*vpcv1.VPC, *core.DetailedResponse, error)
 	ListVpcs(options *vpcv1.ListVpcsOptions) (*vpcv1.VPCCollection, *core.DetailedResponse, error)
 	DeleteFloatingIP(options *vpcv1.DeleteFloatingIPOptions) (*core.DetailedResponse, error)
 	ListFloatingIps(options *vpcv1.ListFloatingIpsOptions) (*vpcv1.FloatingIPCollection, *core.DetailedResponse, error)
@@ -76,10 +82,13 @@ type VPC interface {
 	ListSubnets(options *vpcv1.ListSubnetsOptions) (*vpcv1.SubnetCollection, *core.DetailedResponse, error)
 	GetSubnetPublicGateway(options *vpcv1.GetSubnetPublicGatewayOptions) (*vpcv1.PublicGateway, *core.DetailedResponse, error)
 	DeletePublicGateway(options *vpcv1.DeletePublicGatewayOptions) (*core.DetailedResponse, error)
+	ListPublicGateways(options *vpcv1.ListPublicGatewaysOptions) (*vpcv1.PublicGatewayCollection, *core.DetailedResponse, error)
 	UnsetSubnetPublicGateway(options *vpcv1.UnsetSubnetPublicGatewayOptions) (*core.DetailedResponse, error)
 	DeleteLoadBalancer(options *vpcv1.DeleteLoadBalancerOptions) (*core.DetailedResponse, error)
 	ListLoadBalancers(options *vpcv1.ListLoadBalancersOptions) (*vpcv1.LoadBalancerCollection, *core.DetailedResponse, error)
 	GetLoadBalancer(options *vpcv1.GetLoadBalancerOptions) (result *vpcv1.LoadBalancer, response *core.DetailedResponse, err error)
+	DeleteSecurityGroup(options *vpcv1.DeleteSecurityGroupOptions) (*core.DetailedResponse, error)
+	ListSecurityGroups(options *vpcv1.ListSecurityGroupsOptions) (*vpcv1.SecurityGroupCollection, *core.DetailedResponse, error)
 }
 
 type ServiceIDClient interface {

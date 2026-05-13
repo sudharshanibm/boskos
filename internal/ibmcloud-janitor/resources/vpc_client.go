@@ -29,10 +29,10 @@ import (
 )
 
 type IBMVPCClient struct {
-	vpcService      *vpcv1.VpcV1
-	ResourceGroupID string
-	VPCID           string
-	Resource        *common.Resource
+	vpcService             *vpcv1.VpcV1
+	VPCID                  string
+	DefaultSecurityGroupID string
+	Resource               *common.Resource
 }
 
 func (c *IBMVPCClient) DeleteInstance(options *vpcv1.DeleteInstanceOptions) (*core.DetailedResponse, error) {
@@ -43,8 +43,24 @@ func (c *IBMVPCClient) ListInstances(options *vpcv1.ListInstancesOptions) (*vpcv
 	return c.vpcService.ListInstances(options)
 }
 
+func (c *IBMVPCClient) ListInstanceNetworkInterfaces(options *vpcv1.ListInstanceNetworkInterfacesOptions) (*vpcv1.NetworkInterfaceUnpaginatedCollection, *core.DetailedResponse, error) {
+	return c.vpcService.ListInstanceNetworkInterfaces(options)
+}
+
+func (c *IBMVPCClient) DeleteInstanceTemplate(options *vpcv1.DeleteInstanceTemplateOptions) (*core.DetailedResponse, error) {
+	return c.vpcService.DeleteInstanceTemplate(options)
+}
+
+func (c *IBMVPCClient) ListInstanceTemplates(options *vpcv1.ListInstanceTemplatesOptions) (*vpcv1.InstanceTemplateCollection, *core.DetailedResponse, error) {
+	return c.vpcService.ListInstanceTemplates(options)
+}
+
 func (c *IBMVPCClient) DeleteVPC(options *vpcv1.DeleteVPCOptions) (*core.DetailedResponse, error) {
 	return c.vpcService.DeleteVPC(options)
+}
+
+func (c *IBMVPCClient) GetVPC(options *vpcv1.GetVPCOptions) (*vpcv1.VPC, *core.DetailedResponse, error) {
+	return c.vpcService.GetVPC(options)
 }
 
 func (c *IBMVPCClient) ListVpcs(options *vpcv1.ListVpcsOptions) (*vpcv1.VPCCollection, *core.DetailedResponse, error) {
@@ -75,6 +91,10 @@ func (c *IBMVPCClient) DeletePublicGateway(options *vpcv1.DeletePublicGatewayOpt
 	return c.vpcService.DeletePublicGateway(options)
 }
 
+func (c *IBMVPCClient) ListPublicGateways(options *vpcv1.ListPublicGatewaysOptions) (*vpcv1.PublicGatewayCollection, *core.DetailedResponse, error) {
+	return c.vpcService.ListPublicGateways(options)
+}
+
 func (c *IBMVPCClient) UnsetSubnetPublicGateway(options *vpcv1.UnsetSubnetPublicGatewayOptions) (*core.DetailedResponse, error) {
 	return c.vpcService.UnsetSubnetPublicGateway(options)
 }
@@ -95,6 +115,14 @@ func (c *IBMVPCClient) GetSubnet(options *vpcv1.GetSubnetOptions) (*vpcv1.Subnet
 	return c.vpcService.GetSubnet(options)
 }
 
+func (c *IBMVPCClient) DeleteSecurityGroup(options *vpcv1.DeleteSecurityGroupOptions) (*core.DetailedResponse, error) {
+	return c.vpcService.DeleteSecurityGroup(options)
+}
+
+func (c *IBMVPCClient) ListSecurityGroups(options *vpcv1.ListSecurityGroupsOptions) (*vpcv1.SecurityGroupCollection, *core.DetailedResponse, error) {
+	return c.vpcService.ListSecurityGroups(options)
+}
+
 // Creates a new VPC Client
 func NewVPCClient(options *CleanupOptions) (*IBMVPCClient, error) {
 	client := &IBMVPCClient{}
@@ -104,7 +132,6 @@ func NewVPCClient(options *CleanupOptions) (*IBMVPCClient, error) {
 		return nil, errors.Wrap(err, "failed to get the resource data")
 	}
 
-	client.ResourceGroupID = vpcData.ResourceGroup
 	client.VPCID = vpcData.VPCID
 	client.Resource = options.Resource
 	url := "https://" + vpcData.Region + ".iaas.cloud.ibm.com/v1"
@@ -117,11 +144,56 @@ func NewVPCClient(options *CleanupOptions) (*IBMVPCClient, error) {
 		Authenticator: auth,
 		URL:           url,
 	})
+	if err != nil {
+		return nil, err
+	}
 	resourceLogger.Info("successfully created VPC client")
 
 	if options.Debug {
 		core.SetLoggingLevel(core.LevelDebug)
 	}
 
-	return client, err
+	if err := client.resolveVPCMetadata(); err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func (c *IBMVPCClient) resolveVPCMetadata() error {
+	if c.VPCID != "" {
+		vpc, _, err := c.GetVPC(&vpcv1.GetVPCOptions{ID: &c.VPCID})
+		if err != nil {
+			return errors.Wrapf(err, "failed to get VPC %q", c.VPCID)
+		}
+		c.setVPCMetadata(vpc)
+		return nil
+	}
+
+	vpcList, _, err := c.ListVpcs(&vpcv1.ListVpcsOptions{})
+	if err != nil {
+		return errors.Wrap(err, "failed to list VPCs while resolving VPC ID")
+	}
+
+	for _, vpc := range vpcList.Vpcs {
+		if vpc.Name == nil || vpc.ID == nil || *vpc.Name != c.Resource.Name {
+			continue
+		}
+		c.VPCID = *vpc.ID
+		c.setVPCMetadata(&vpc)
+		logrus.WithFields(logrus.Fields{
+			"resource": c.Resource.Name,
+			"vpc_id":   c.VPCID,
+		}).Info("resolved VPC ID from Boskos resource name")
+		return nil
+	}
+
+	return errors.Errorf("no VPC ID provided and no VPC named %q found", c.Resource.Name)
+}
+
+func (c *IBMVPCClient) setVPCMetadata(vpc *vpcv1.VPC) {
+	if vpc == nil || vpc.DefaultSecurityGroup == nil || vpc.DefaultSecurityGroup.ID == nil {
+		return
+	}
+	c.DefaultSecurityGroupID = *vpc.DefaultSecurityGroup.ID
 }

@@ -74,7 +74,11 @@ func run(boskos *boskosClient.Client) error {
 			}
 			options.Resource = res
 			if err := resources.CleanAll(options); err != nil {
-				logrus.WithError(err).Errorf("Failed to clean resource %q", res.Name)
+				logrus.WithError(err).WithField("name", res.Name).Error("Failed to clean resource; releasing it back to dirty")
+				if releaseErr := boskos.ReleaseOne(res.Name, common.Dirty); releaseErr != nil {
+					return errors.Wrapf(releaseErr, "Failed to release resource %q back to dirty after cleanup failure: %v", res.Name, err)
+				}
+				time.Sleep(sleepTime)
 				continue
 			}
 			if err := boskos.UpdateOne(res.Name, common.Cleaning, res.UserData); err != nil {

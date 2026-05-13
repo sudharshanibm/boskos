@@ -30,6 +30,7 @@ const (
 	Region            = "region"
 	Zone              = "zone"
 	ResourceGroup     = "resource-group"
+	VPCID             = "vpc-id"
 )
 
 type PowerVSResourceData struct {
@@ -38,9 +39,8 @@ type PowerVSResourceData struct {
 }
 
 type VPCResourceData struct {
-	Region        string
-	ResourceGroup string
-	VPCID         string
+	Region string
+	VPCID  string
 }
 
 // Fetches the resource user data for type powervs-service
@@ -75,17 +75,12 @@ func GetVPCResourceData(r *common.Resource) (*VPCResourceData, error) {
 	if !ok {
 		return nil, errors.New("no region in UserData")
 	}
-	rg, ok := r.UserData.Map.Load(ResourceGroup)
-	if !ok {
-		return nil, errors.New("no resource group in UserData")
-	}
 	data := &VPCResourceData{
-		Region:        region.(string),
-		ResourceGroup: rg.(string),
+		Region: region.(string),
 	}
 
 	// Optional VPC ID
-	if vpcID, ok := r.UserData.Map.Load("vpc-id"); ok {
+	if vpcID, ok := r.UserData.Map.Load(VPCID); ok {
 		data.VPCID = vpcID.(string)
 	}
 

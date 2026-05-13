@@ -17,15 +17,14 @@ limitations under the License.
 package resources
 
 import (
-	"github.com/IBM/vpc-go-sdk/vpcv1"
-
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 type VPCs struct{}
 
-// Cleans up the VPCs in a given region
+// Leaves the target VPC in place. vpc-service janitor cleanup is scoped to
+// resources inside the VPC, not deletion of the VPC itself.
 func (VPCs) cleanup(options *CleanupOptions) error {
 	resourceLogger := logrus.WithFields(logrus.Fields{"resource": options.Resource.Name})
 	resourceLogger.Info("Cleaning up the VPCs")
@@ -34,27 +33,6 @@ func (VPCs) cleanup(options *CleanupOptions) error {
 		return errors.Wrap(err, "couldn't create VPC client")
 	}
 
-	// Skip VPC deletion if specific VPC ID is provided
-	if client.VPCID != "" {
-		resourceLogger.Info("Skipping VPC deletion as VPC ID is passed in user-data")
-		return nil
-	}
-
-	vpcList, _, err := client.ListVpcs(&vpcv1.ListVpcsOptions{
-		ResourceGroupID: &client.ResourceGroupID,
-	})
-	if err != nil {
-		return errors.Wrap(err, "failed to list the VPCs")
-	}
-
-	for _, vpc := range vpcList.Vpcs {
-		_, err = client.DeleteVPC(&vpcv1.DeleteVPCOptions{
-			ID: vpc.ID,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "failed to delete the VPC %q", *vpc.Name)
-		}
-	}
-	resourceLogger.Info("Successfully deleted the VPCs")
+	resourceLogger.WithField("vpc_id", client.VPCID).Info("Skipping VPC deletion")
 	return nil
 }

@@ -34,12 +34,8 @@ func (VPCInstance) cleanup(options *CleanupOptions) error {
 		return errors.Wrap(err, "couldn't create VPC client")
 	}
 
-	// List instances with optional VPC filter
 	listInstanceOpts := &vpcv1.ListInstancesOptions{
-		ResourceGroupID: &client.ResourceGroupID,
-	}
-	if client.VPCID != "" {
-		listInstanceOpts.VPCID = &client.VPCID
+		VPCID: &client.VPCID,
 	}
 
 	instanceList, _, err := client.ListInstances(listInstanceOpts)
@@ -48,6 +44,9 @@ func (VPCInstance) cleanup(options *CleanupOptions) error {
 	}
 
 	for _, ins := range instanceList.Instances {
+		if err := deleteInstanceFloatingIPs(client, ins); err != nil {
+			return err
+		}
 		_, err := client.DeleteInstance(&vpcv1.DeleteInstanceOptions{
 			ID: ins.ID,
 		})
@@ -56,5 +55,27 @@ func (VPCInstance) cleanup(options *CleanupOptions) error {
 		}
 	}
 	resourceLogger.Info("Successfully deleted the virtual server instances")
+	return nil
+}
+
+func deleteInstanceFloatingIPs(client *IBMVPCClient, ins vpcv1.Instance) error {
+	interfaces, _, err := client.ListInstanceNetworkInterfaces(&vpcv1.ListInstanceNetworkInterfacesOptions{
+		InstanceID: ins.ID,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "failed to list network interfaces for instance %q", *ins.Name)
+	}
+
+	for _, networkInterface := range interfaces.NetworkInterfaces {
+		for _, fip := range networkInterface.FloatingIps {
+			_, err := client.DeleteFloatingIP(&vpcv1.DeleteFloatingIPOptions{
+				ID: fip.ID,
+			})
+			if err != nil {
+				return errors.Wrapf(err, "failed to delete the floating IP %q", *fip.Name)
+			}
+		}
+	}
+
 	return nil
 }
