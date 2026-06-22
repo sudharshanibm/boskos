@@ -52,8 +52,14 @@ Every resource of type `vpc-service` stores the following user data.
 | ------- | ------------------------------ |
 | `api-key` | API Key of mapped Service ID         |
 | `region` | VPC region  |
-| `resource-group` | Resource group of the cloud instances |
+| `resource-group` | Resource group ID of the cloud instances. Optional when `resource-group-name` is set |
+| `resource-group-name` | Resource group name of the cloud instances. Resolved to its ID before use. Optional when `resource-group` is set |
 | `vpc-id` | Optional ID of a pre-created VPC to retain and clean for reuse |
+
+At least one of `resource-group` (ID) or `resource-group-name` (name) must be
+set. The VPC SDK filters by resource group ID, so when only the name is given
+the janitor resolves it to an ID via the Resource Manager API; a value that is
+already a 32-character ID is used as-is.
 
 When `vpc-id` is specified, cleanup is scoped to resources attached to that
 VPC and the VPC itself is retained. Without `vpc-id`, the existing

@@ -30,6 +30,7 @@ const (
 	Region            = "region"
 	Zone              = "zone"
 	ResourceGroup     = "resource-group"
+	ResourceGroupName = "resource-group-name"
 	VPCID             = "vpc-id"
 )
 
@@ -39,9 +40,10 @@ type PowerVSResourceData struct {
 }
 
 type VPCResourceData struct {
-	Region        string
-	ResourceGroup string
-	VPCID         string
+	Region            string
+	ResourceGroup     string
+	ResourceGroupName string
+	VPCID             string
 }
 
 // Fetches the resource user data for type powervs-service
@@ -76,13 +78,22 @@ func GetVPCResourceData(r *common.Resource) (*VPCResourceData, error) {
 	if !ok {
 		return nil, errors.New("no region in UserData")
 	}
-	rg, ok := r.UserData.Map.Load(ResourceGroup)
-	if !ok {
-		return nil, errors.New("no resource group in UserData")
-	}
 	data := &VPCResourceData{
-		Region:        region.(string),
-		ResourceGroup: rg.(string),
+		Region: region.(string),
+	}
+
+	// The resource group can be supplied either as an ID ("resource-group") or
+	// as a name ("resource-group-name"); at least one must be present. When a
+	// name is present the janitor resolves it to an ID before use, so a single
+	// "resource-group-name" key can serve both the deployer and the janitor.
+	if rg, ok := r.UserData.Map.Load(ResourceGroup); ok {
+		data.ResourceGroup = rg.(string)
+	}
+	if rgName, ok := r.UserData.Map.Load(ResourceGroupName); ok {
+		data.ResourceGroupName = rgName.(string)
+	}
+	if data.ResourceGroup == "" && data.ResourceGroupName == "" {
+		return nil, errors.New("no resource group or resource group name in UserData")
 	}
 
 	// Optional VPC ID

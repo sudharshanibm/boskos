@@ -137,6 +137,32 @@ func NewVPCClient(options *CleanupOptions) (*IBMVPCClient, error) {
 		return nil, err
 	}
 
+	// The VPC SDK filters resources by resource group ID. When the resource
+	// group is provided as a name, resolve it to an ID here, so a single
+	// "resource-group-name" userdata key can serve both the deployer (which
+	// needs the name for Terraform's data "ibm_resource_group" lookup) and the
+	// janitor (which needs the ID).
+	if vpcData.ResourceGroupName != "" {
+		accountID := options.AccountID
+		if accountID == nil {
+			sclient, err := NewServiceIDClient(auth, &APIKey{serviceIDName: options.Resource.Name})
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create serviceID client")
+			}
+			accountID, err = sclient.GetAccount()
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to get the account ID")
+			}
+			options.AccountID = accountID
+		}
+		resourceGroupID, err := resolveResourceGroupID(auth, vpcData.ResourceGroupName, accountID)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to resolve resource group name to ID")
+		}
+		client.ResourceGroupID = resourceGroupID
+		resourceLogger.WithField("resource-group-name", vpcData.ResourceGroupName).Info("resolved resource group name to ID")
+	}
+
 	client.vpcService, err = vpcv1.NewVpcV1(&vpcv1.VpcV1Options{
 		Authenticator: auth,
 		URL:           url,
